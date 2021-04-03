@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.express as px
 from sklearn.linear_model import LinearRegression
 import numpy as np
+import statsmodels
 from .general_functions import format_fig, facet_prettify, hour_on_ticks, discretize_lineup_position, get_genres
 import re
 
