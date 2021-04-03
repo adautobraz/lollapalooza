@@ -13,6 +13,7 @@ from sources.data_load_functions import *
 from sources.visualization_functions import *
 from sources.general_functions import *
 
+image_counter = -1
 
 # Data definitions
 data_path = Path('./data/prep')
@@ -81,14 +82,14 @@ center.markdown(text, unsafe_allow_html=True)
 space_out(2)
 
 fig = genre_year_trend(genre_per_act_df, tag_dict_map, category_orders)
-image_name = plot(center, fig)
+image_counter, image_name = plot(center, fig, image_counter)
 
 fig = lineups_visualizer(lineups_df, col_labels)
-image_name = plot(center, fig)
+image_counter, image_name = plot(center, fig, image_counter)
 
 # Genre view
 fig = acts_similarity_scatter(lineups_df, umap_df, match_color_year, col_labels)
-image_name = plot(center, fig)
+image_counter, image_name = plot(center, fig, image_counter)
 
 fig = genre_year_position_trend(genre_per_act_df, 4, category_orders, order_hour_dict)
-image_name = plot(center, fig)
+image_counter, image_name = plot(center, fig, image_counter)

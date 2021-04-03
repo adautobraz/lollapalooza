@@ -17,23 +17,31 @@ def genre_year_trend(genre_per_act_df, tag_dict_map, category_orders):
     df.loc[:, 'genre_importance'] = 100*df['value']
 
     fig = px.scatter(df, x='year', y='genre_importance', facet_col='genre', trendline='ols', color='genre',
-            title='Importância de cada gênero musical no Lineup,<br>linha de tendência',
-            category_orders=category_orders,
-            color_discrete_map=tag_dict_map
+                    category_orders=category_orders, color_discrete_map=tag_dict_map
                     )
 
 
-    fig.update_xaxes(tickvals=[2012, 2020], color='grey', title='', tickangle=45)
+    fig.update_xaxes(color='grey', title='', showticklabels=False)
+    fig.update_xaxes(col=1, showticklabels=True, tickvals=[2012, 2020], color='grey', title='', tickangle=45)
     fig.update_yaxes(range=[0, 40], dtick=10, ticksuffix='%', color='grey')
     fig.update_yaxes(col=1, title='Importância do gênero musical', titlefont_color='black')
 
+    fig = format_fig(fig)
+    fig = facet_prettify(fig)
+
     fig.update_layout(
-        showlegend=False,
+        title='Importância de cada gênero musical no Lineup,<br>linha de tendência',
+        # title_y=0,
+        # title_pad=dict(b=100, t=100),
+        # title_yref='paper',
+        showlegend=True,
+        legend_orientation = 'h',
+        legend_y=-0.2,
+        legend_title='Gênero<br>musical',
         margin_t=120
     )
 
-    fig = format_fig(fig)
-    fig = facet_prettify(fig)
+    fig.for_each_annotation(lambda x: x.update(textangle=20))
 
     return fig
 

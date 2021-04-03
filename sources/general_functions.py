@@ -4,9 +4,6 @@ import streamlit as st
 import numpy as np
 import string
 
-global image_counter 
-image_counter = -1
-
 ## Streamlit Layout
 def space_out(space):
     for i in range(0, space):
@@ -20,9 +17,9 @@ def pad_cols(col_list):
 
 
 ## Plotly Layout 
-def plot(streamlit_el, fig):
+def plot(streamlit_el, fig, image_counter):
     general_config ={'displayModeBar':False}
-    global image_counter
+
     image_counter += 1
     image_name = string.ascii_uppercase[image_counter]
     image_ref = f"<b>{image_name}</b>"
@@ -31,7 +28,7 @@ def plot(streamlit_el, fig):
     fig.update_layout(title=new_title)
     streamlit_el.plotly_chart(fig, use_container_width=True, config=general_config)
     
-    return image_ref
+    return image_counter, image_ref
 
 
 def format_fig(fig):
