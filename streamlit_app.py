@@ -24,12 +24,15 @@ session = SessionState.get(
     view=1, first_query_params=st.experimental_get_query_params()
 )
 first_query_params = session.first_query_params
+st.write(first_query_params)
 default_values = {
     "view": int(session.first_query_params.get("parte", [0])[0]),
 }
 
 session.view = default_values['view']
 
+# Data path
+data_path = Path('./data/prep')
 
 # Layout definitions
 cols_baseline=10
@@ -38,7 +41,7 @@ cols_baseline=10
 parts = {1: 'Passado e Futuro (Parte 1)', 2:'A Cena Nacional (Parte 2)', 3:'Mulheres na Música (Parte 3)'}
 
 if session.view == 1:
-    part1(cols_baseline)
+    part1(cols_baseline, data_path)
 
 if session.view == 2:
     part2(cols_baseline)

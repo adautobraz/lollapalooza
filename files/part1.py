@@ -10,10 +10,9 @@ from sources.visualization_functions import *
 from sources.general_functions import *
 
 
-def part1(cols_baseline):
+def part1(cols_baseline, data_path):
 
     # Data definitions
-    data_path = Path('./data/prep')
     image_counter = -1
 
     # Load data
