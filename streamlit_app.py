@@ -24,12 +24,12 @@ session = SessionState.get(
     view=1, first_query_params=st.experimental_get_query_params()
 )
 first_query_params = session.first_query_params
-st.write(first_query_params)
+# st.write(first_query_params)
 default_values = {
     "view": int(session.first_query_params.get("parte", [0])[0]),
 }
 
-session.view = default_values['view']
+session.view = 1#default_values['view']
 
 # Data path
 data_path = Path('./data/prep')
