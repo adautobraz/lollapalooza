@@ -8,13 +8,13 @@ import pandas as pd
 from pathlib import Path
 from PIL import Image
 import string
-import SessionState
+from files import SessionState
 
 from sources.data_load_functions import *
 from sources.visualization_functions import *
 from sources.general_functions import *
-from part1 import part1
-from part2 import part2
+from files.part1 import part1
+from files.part2 import part2
 
 # Page params
 query_params = st.experimental_get_query_params()
