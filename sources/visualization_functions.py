@@ -7,7 +7,7 @@ from .general_functions import format_fig, facet_prettify, hour_on_ticks, discre
 import re
 
 
-
+## Musical genre views
 def genre_year_trend(genre_per_act_df, tag_dict_map, category_orders):
 
     df = genre_per_act_df\
@@ -20,9 +20,9 @@ def genre_year_trend(genre_per_act_df, tag_dict_map, category_orders):
                     category_orders=category_orders, color_discrete_map=tag_dict_map
                     )
 
-
-    fig.update_xaxes(color='grey', title='', showticklabels=False)
-    fig.update_xaxes(col=1, showticklabels=True, tickvals=[2012, 2020], color='grey', title='', tickangle=45)
+    tickvals=[df['year'].min(), df['year'].max()]
+    fig.update_xaxes(color='grey', title='', showticklabels=False, tickvals=tickvals)
+    fig.update_xaxes(col=1, showticklabels=True,  color='grey', title='', tickangle=45)
     fig.update_yaxes(range=[0, 40], dtick=10, ticksuffix='%', color='grey')
     fig.update_yaxes(col=1, title='Importância do gênero musical', titlefont_color='black')
 
@@ -30,7 +30,7 @@ def genre_year_trend(genre_per_act_df, tag_dict_map, category_orders):
     fig = facet_prettify(fig)
 
     fig.update_layout(
-        title='Importância de cada gênero musical no Lineup,<br>linha de tendência',
+        title='Percentual de cada gênero<br>musical, tendência',
         # title_y=0,
         # title_pad=dict(b=100, t=100),
         # title_yref='paper',
@@ -38,7 +38,7 @@ def genre_year_trend(genre_per_act_df, tag_dict_map, category_orders):
         legend_orientation = 'h',
         legend_y=-0.2,
         legend_title='Gênero<br>musical',
-        margin_t=120
+        margin_t=130
     )
 
     fig.for_each_annotation(lambda x: x.update(textangle=20))
@@ -60,30 +60,35 @@ def genre_year_position_trend(genre_per_act_df, smooth, category_orders, order_h
     df = df.sort_values(by=['color'])
     df.loc[:, 'size'] = 1
 
-    palette = px.colors.sequential.Agsunset
+    palette = px.colors.sequential.Agsunset_r
     colors = [palette[i] for i in range(0, len(palette)) if i% 2 == 0]
 
     fig = px.scatter(df, facet_col='genre', y='genre_importance', x='year',
-                    color='color', trendline='ols', height=800, size='size', size_max=3,
-            title='Importância de cada gênero musical no Lineup,<br>linha de tendência, por ordem no lineup',
+                    color='color', trendline='ols', height=800, size='size', size_max=2,
             category_orders=category_orders,
             color_discrete_sequence=colors
         )
 
+    tickvals = [df['year'].min(), df['year'].max()]
+
     fig.update_yaxes(title='', color='grey', range=[0, 55], ticksuffix='%')
-    fig.update_xaxes(title='', color='grey', tickvals=[2012, 2020], tickangle=45)
+    fig.update_xaxes(title='', showticklabels=False, color='grey', tickvals=tickvals, tickangle=45)
+    fig.update_xaxes(col=1, showticklabels=True)
 
     fig.update_layout(
+        title='Percentual de cada gênero musical,<br>tendência por horário',
         showlegend=True, 
         height=500, 
         legend_orientation='h', 
         legend_title='Horário no Lineup',
         legend_y=-0.2,
-        margin_t=120
+        margin_t=130
     )
     fig.update_traces(marker_opacity=0.8)
 
     fig = format_fig(fig)
+    fig.for_each_annotation(lambda x: x.update(textangle=20))
+
     fig = facet_prettify(fig)
 
     return fig
@@ -132,6 +137,54 @@ def genre_year_position_heatmap(genre_per_act_df, smooth, category_orders):
     return fig
 
 
+def genre_per_artist(genre_per_act_df, tag_dict_map):
+    # Exemplos 
+    sample_size = 6
+    df = genre_per_act_df\
+            .loc[genre_per_act_df['order_in_lineup'] > 90].copy()
+
+    artist_ids = df.groupby(['year', 'artist_id'], as_index=False)\
+                .agg({'genre':'sum'}).sample(sample_size, random_state=42)['artist_id'].tolist()
+
+    df = df.loc[df['artist_id'].isin(artist_ids)]
+
+    df.loc[:, 'genre_rank'] = df.groupby(['artist_id'])['genre_importance'].rank(ascending=False)
+
+    df.loc[:, 'x_end'] = df.sort_values(by='genre_rank').groupby(['artist_id'])['genre_importance'].cumsum()
+    df.loc[:, 'x_start'] = df.sort_values(by='genre_rank').groupby(['artist_id'])['x_end'].shift(1).fillna(0)
+    df.loc[:, 'delta'] = df['x_end'] - df['x_start']
+    df.loc[:, 'text'] = df['delta'].apply(lambda x: "{:.0f}%".format(x) if x > 10 else  '')
+    df.loc[:, 'y_axis'] = df.apply(lambda x: "{}<br>({:.0f})".format(x['artist_name'], x['year']), axis=1)
+
+    df = df.sort_values(by=['year'])
+
+    fig = px.timeline(df, y='y_axis', x_start='x_start', x_end='x_end', color='genre',
+                    color_discrete_map=tag_dict_map, hover_data=['delta'], text = 'text'
+                    )
+
+    fig.update_xaxes(type = 'linear', color='grey', tickvals=[0,100], ticksuffix='%')
+    fig.update_yaxes(title='', color='grey')
+    fig.update_traces(insidetextanchor='middle')
+
+
+    for i in range(0, len(fig.data)):
+    #     rank_day=int(re.findall('rank_day=([0-9])', fig.data[i].hovertemplate)[0])
+        genre= fig.data[i].legendgroup
+        aux = df.loc[(df['genre'] == genre)]
+        fig.data[i].x = aux.delta.tolist()
+
+    fig = format_fig(fig)
+
+    fig.update_layout(
+        title='Gênero musical<br>de alguns headliners',
+        margin_t=120,
+        legend_orientation='h', 
+        legend_title='Gênero'
+    )
+
+    return fig
+
+## Gender views
 def gender_year_bar(lineups_df, colors_dict):
     # Números absolutos
     df = lineups_df.copy()
@@ -183,6 +236,7 @@ def gender_share_year_trend(lineups_df, colors_dict):
     fig = px.scatter(df, x='year', y='percentage', symbol='gender', 
                     trendline='ols', color='female_presence')
 
+    last_year = df['year'].max()
     # Extend hovertemplate
     # Female
     x = df.loc[df['female_presence'] == 1, 'year'].values.reshape(-1, 1)
@@ -193,7 +247,7 @@ def gender_share_year_trend(lineups_df, colors_dict):
 
     year_of_equality = int(np.ceil((50 - model.intercept_)/model.coef_))
 
-    x_pred = np.array([2020, year_of_equality])
+    x_pred = np.array([last_year, year_of_equality])
     y_pred = model.predict(x_pred.reshape(-1,1))
 
     fem_df = pd.DataFrame({'percentage':y_pred, 'year':x_pred})
@@ -209,7 +263,7 @@ def gender_share_year_trend(lineups_df, colors_dict):
 
     year_of_equality = int(np.ceil((50 - model.intercept_)/model.coef_))
 
-    x_pred = np.array([2020, year_of_equality])
+    x_pred = np.array([last_year, year_of_equality])
     y_pred = model.predict(x_pred.reshape(-1,1))
 
     mal_df = pd.DataFrame({'percentage':y_pred, 'year':x_pred})
@@ -227,12 +281,15 @@ def gender_share_year_trend(lineups_df, colors_dict):
                     color_discrete_map={'% Homens':colors_dict['grey'], '% Mulheres':colors_dict['red']},
                     symbol_map={'Projetado':'line-ns', 'Até hoje':'circle'})
 
-    fig.update_xaxes(tickvals=[2012, 2020, 2048], 
+    tickvals = [df['year'].min(), last_year, year_of_equality]
+    ticktext = [f"<b>{t:.0f}</b>" if t == year_of_equality else f"{t:.0f}"  for t in tickvals]
+    fig.update_xaxes(tickvals=tickvals,
                     title='', 
                     color='black',
                     tickmode='array',
-                    ticktext=['2012', '2020', '<b>2048</b>']
+                    ticktext=ticktext
                     )
+
     fig.update_yaxes(range=[0, 101], dtick=50, ticksuffix='%', title='Porcentagem de artistas<br> do lineup')
     fig.update_layout(
         legend_title='Gênero, período',
@@ -240,7 +297,7 @@ def gender_share_year_trend(lineups_df, colors_dict):
         legend_y=-0.15,
         height=400,
         margin_t=120,
-        title='Igualdade de gênero no Lolla?<br>Só em <b>2048</b>'
+        title=f'Igualdade de gênero no Lolla?<br>Só em <b>{year_of_equality}</b>'
     )
 
     fig.add_vline(x=year_of_equality, line_color='grey', line_dash='dash')
@@ -310,11 +367,12 @@ def gender_position_year_ridge(lineups_df, match_color):
 
     fig.update_xaxes(range=[0,100], dtick=25, title='Momento da atração', tickvals=[0, 50, 100], 
                     ticktext=['0%<br>(12h)', '50%<br>(17h)','100%<br>(22h)'])
-    fig.update_yaxes(categoryorder='category ascending',
-                    range=[2011.5, 2020.9], dtick=1)
+    range_y = [df['year'].min() - 1, df['year'].max() + 1]
+    fig.update_yaxes(categoryorder='category ascending', tickvals=df['year'].sort_values().unique().tolist(),
+                    range=range_y)
     fig.update_yaxes(col=1, title='Ano')
     fig.update_layout(
-        title='Que horas elas tocam?<br>2012 a 2020',
+        title=f"Que horas elas tocam?<br>{df['year'].min()} a {df['year'].max()}",
         showlegend=False,
         margin_t=120,
         height=600, width=500)
@@ -400,7 +458,8 @@ def gender_genre_year_trend(genre_per_act_df, color_dict, category_orders):
             category_orders=category_orders)
 
     fig = facet_prettify(fig)
-    fig.update_xaxes(tickvals=[2012,2020], title='', color='grey', tickangle=45)
+    fig.update_xaxes(tickvals=[df['year'].min(),df['year'].max()], title='', color='grey', tickangle=45, showticklabels=False)
+    fig.update_xaxes(col=1, showticklabels=True)
     fig.update_yaxes(range=[-1,45], dtick=20, ticksuffix='%', title='')
     fig.update_layout(
         legend_title='Gênero', 
@@ -452,6 +511,7 @@ def gender_national_share(lineups_df, color_dict):
     return fig
 
 
+# Overall views
 def lineups_visualizer(lineups_df, labels):
     df = lineups_df.copy().fillna('')
 
@@ -498,7 +558,8 @@ def lineups_visualizer(lineups_df, labels):
 
     fig.update_xaxes(type = 'linear', tickvals=[12, 17, 22], color='grey')
     fig.update_traces(width=0.1)
-    fig.update_yaxes(range=[2011.5, 2020.5], title='', color='grey')
+    range_year = [df['year'].min() - 0.5, df['year'].max() + 0.5]
+    fig.update_yaxes(range=range_year, title='', color='grey')
 
     for i in range(0, len(fig.data)):
         rank_day=int(fig.data[i].customdata[0][0])
@@ -560,3 +621,278 @@ def acts_similarity_scatter(lineups_df, umap_df, match_color_year, labels):
     )
     
     return fig
+
+
+def cumulative_festival_time(lineups_df, match_color_year):
+    # Tempo total acumulado
+    df = lineups_df\
+            .groupby(['year'], as_index=False)\
+            .agg({'duration_min': 'sum'})
+
+    df.loc[:, 'duration_h'] = df['duration_min']/60
+    df.loc[:, 'duration_days'] = df['duration_h']/24
+    df.loc[:, 'text'] = df.apply(lambda x: "<b>{:.0f}</b>: {:.0f}h".format(x['year'], x['duration_h']), axis=1)
+
+    df.loc[:, 'x_end'] = df['duration_min'].cumsum()/60/24
+
+    df.loc[:, 'x_start'] = df['x_end'].shift(1).fillna(0)
+    df.loc[:, 'delta'] = df['x_end'] - df['x_start']
+    df.loc[:, 'year'] = df['year'].astype(str)
+    df.loc[:, 'y'] = 1
+
+
+    fig=px.bar(df, x='y', y='duration_days', color='year', text='text',
+            color_discrete_map=match_color_year)
+
+    fig.update_traces(insidetextanchor='middle')
+
+    fig = format_fig(fig)
+
+    fig.update_layout(
+        width=300,
+        title='Tempo acumulado<br>de festival',
+        margin_t=120,
+        yaxis_title='',
+        yaxis_showticklabels=True,
+    #     yaxis_autorange='reversed',
+        yaxis_color='grey',
+        yaxis_dtick=3,
+        yaxis_ticksuffix=' dias',
+        xaxis_showticklabels=False,
+        xaxis_title='',
+        showlegend=False,
+        legend_orientation='v',
+        legend_title='Ano',
+    )
+
+    return fig
+
+
+def artist_participation_distribution(lineups_df, lolla_palette):
+    # Total de artistas
+    df = lineups_df.reset_index().copy()
+    df.loc[:, 'ids_list'] = df['artists_ids'].fillna(df['artist_name']).apply(lambda x: x.split(','))
+    df = pd.DataFrame.explode(df, column='ids_list').loc[:, ['artist_id', 'ids_list', 'artist', 'date']]
+
+    df = df\
+            .groupby(['ids_list'], as_index=False)\
+            .agg({'artist':'max', 'date':'nunique', 'artist_id':'nunique'})\
+            .sort_values(by=['artist_id'], ascending=False)
+
+    df = df.groupby(['artist_id'], as_index=False).agg({'ids_list':'nunique'})
+    df.loc[:, 'percent'] = 100*df['ids_list']/df['ids_list'].sum()
+    df
+    fig = px.bar(df, x='artist_id', y='percent', color_discrete_sequence=lolla_palette)
+
+    fig.update_traces(texttemplate='%{y:.1f}', textposition='outside')
+    fig.update_yaxes(range=[0,101], tickvals=[0, 100], ticksuffix='%', color='grey', title='Porcentagem dos artistas')
+    fig.update_xaxes(dtick=1, color='grey', title='Total de participações')
+    fig.update_traces(texttemplate='%{y:.1f}%', textposition='outside')
+
+    fig = format_fig(fig)
+
+    fig.update_layout(
+        title='Quantas vezes os<br> artistas já participaram?',
+        margin_t=120
+    )
+    return fig
+
+
+## Career time
+def career_time_distribution_bar(lineups_df, lolla_palette):
+    # Tempo de carreira
+    df = lineups_df.loc[lineups_df['has_discography']].copy()
+
+    group = 2
+    df.loc[:, 'career_disc'] = df['career_time'].apply(lambda x: "{:.0f} - {:.0f}".format((x//group)*group, ((x//group)*group) + group - 1) if x < 20 else '20+')
+
+    df = df\
+            .groupby(['career_disc'], as_index=False)\
+            .agg({'artist':'count', 'career_time':'mean'})\
+            .sort_values(by=['career_time'])
+
+    df.loc[:, 'percent'] = 100*df['artist']/df['artist'].sum()
+
+    df.loc[:, 'rank'] = df['percent'].rank(ascending=False)
+    df.loc[:, 'text'] = df.apply(lambda x: "<b>{:.1f}%</b>".format(x['percent']) if x['rank'] == 1 else "{:.1f}%".format(x['percent']), axis=1)
+
+    fig = px.bar(df, x='career_disc', y='percent', text='text',
+                color_discrete_sequence=lolla_palette
+            )
+    fig.update_yaxes(ticksuffix='%', color='grey', dtick=25, range=[0,30])
+    fig.update_xaxes(color='grey', tickangle=45)
+    fig.update_traces(textposition='outside')
+
+    fig = format_fig(fig)
+    fig.update_layout(
+        title='Quanto tempo de<br>carreira têm os artistas?',
+        margin_t=120,
+        xaxis_title='Anos de carreira',
+        yaxis_title='Porcentagem dos artistas'
+    )
+    
+    return fig
+
+
+def career_time_distribution_year_violin(lineups_df, match_color_year):
+   # Tempo de carreira ao longo do tempo
+    df = lineups_df.loc[lineups_df['has_discography']]
+
+    df = df.sort_values(by=['year'], ascending=False)
+
+    fig = px.violin(df, x='career_time', hover_name='artist_name', y='year', orientation='h',
+                    color='year', color_discrete_map=match_color_year,
+                    hover_data=['first_release', 'show_hour'], points='outliers'
+                )
+
+    fig.update_traces(side = 'positive', spanmode='soft', width=3,
+                    meanline_visible=True)
+
+    years = df['year'].unique().tolist()
+    fig.update_yaxes(dtick=1, tickvals=years, gridwidth=2, color='grey')
+    fig.update_xaxes(range=[0, 40], color='grey', tickvals=[0, 6, 10, 20, 30, 40])
+
+    fig.update_layout(
+        width=400,
+        title='Tempo de carreira dos artistas,<br>distribuição por ano',
+        margin_t=120,
+        xaxis_title='Anos de carreira',
+        yaxis_title='',
+
+        showlegend=False
+    )
+
+    for i in range(0, len(fig.data)):
+        year = fig.data[i].name
+        fig.data[i].fillcolor = match_color_year[year]
+        fig.data[i].marker.color = match_color_year[year]
+        fig.data[i].marker.line.width = 1
+        fig.data[i].marker.line.color = 'black'
+        fig.data[i].line.width = 1
+        fig.data[i].meanline.width = 2
+        fig.data[i].opacity = 0.7
+        if year < '2014':
+            fig.data[i].line.color = 'grey'
+            fig.data[i].meanline.color = 'grey'
+        else:
+            fig.data[i].line.color = 'white'
+            fig.data[i].meanline.color = 'white'
+            
+    fig = format_fig(fig)
+    return fig
+
+
+def career_time_per_year_line(lineups_df, lolla_palette, color_dict):
+    df = lineups_df.copy()
+    df = df.groupby(['year'])\
+            .agg({'career_time':['mean', 'median']})\
+            .droplevel(0, axis=1)\
+            .reset_index()
+
+    df.loc[:, 'min'] = df['mean'].min()
+    df.loc[:, 'max'] = df['mean'].max()
+    df.loc[:, 'is_highlight'] = df.apply(lambda x: x['mean'] in [x['min'], x['max']], axis=1)
+    df.loc[:, 'text'] = df.apply(lambda x: "{:.1f}".format(x['mean']) if x['is_highlight'] else '', axis=1)
+    df.loc[:, 'x_axis'] = df.apply(lambda x: "<b>{:.0f}</b>".format(x['year']) if x['is_highlight'] else "{:.0f}".format(x['year']), axis=1)
+
+    fig = px.line(df, x='year', y='mean', text='text',
+                color_discrete_sequence=lolla_palette)
+
+    fig = format_fig(fig)
+    fig.update_yaxes(rangemode='tozero', color='grey', range=[-0.2, 11],
+                    dtick=2,
+                    title='Tempo médio de carreira')
+
+    years = df['year'].unique().tolist()
+    years_text = df['x_axis'].tolist()
+    fig.update_xaxes(tickvals=years, ticktext=years_text, tickangle=45,
+                    range=[min(years)-1, max(years)+1],
+                    showgrid=False,
+                    title='Ano do festival')
+
+    fig.update_traces(mode='lines+markers+text', textposition='bottom left')
+    # fig.update_traces(texttemplate='%{y:.1f}', textposition='top center')
+
+    highlights = df.loc[df['is_highlight'], 'year'].tolist()
+    for h in highlights:
+        fig.add_vline(x=h, line_color=color_dict['grey'], 
+                    line_dash='dash', line_width=1)
+
+    fig.update_layout(
+        title='Tempo médio de carreira,<br>por ano',
+        margin_t=120
+    )
+    return fig
+
+
+def career_time_position_bar(lineups_df, lolla_palette):
+    df = lineups_df.copy()
+    df = df.groupby(['lineup_moment'])\
+            .agg({'career_time':['mean', 'median']})\
+            .droplevel(0, axis=1)\
+            .reset_index()
+
+    fig = px.bar(df, y='lineup_moment', x='mean', color_discrete_sequence=lolla_palette)
+    fig = format_fig(fig)
+    fig.update_xaxes(tickvals=[], title='Anos de carreira',
+                    color='grey')
+    fig.update_yaxes(title='Horário no lineup', color='grey')
+    fig.update_traces(texttemplate='%{x:.1f}', textposition='inside')
+    fig.update_layout(
+        title='Quanto tempo de carreira<br>para tocar em cada horário?',
+        margin_t=120
+    )
+    return fig
+
+
+def career_time_per_position_heatmap(lineups_df, category_orders, palette_name):
+    # Tempo desde o último álbum - Posição no Lineup e Anos
+    df = lineups_df.copy()
+
+    fig = px.density_heatmap(lineups_df, x='year', y='lineup_moment', z='career_time',
+                            category_orders=category_orders,
+                    histfunc='avg', nbinsx=9, nbinsy=10, color_continuous_scale=palette_name)
+    fig = format_fig(fig)
+    fig.update_yaxes(autorange='reversed')
+    fig.update_layout(
+        title='Quanto tempo demora<br>para ser headliner?',
+        margin_t=120,
+        coloraxis_colorbar_title='Anos de<br>carreira',
+        yaxis_title='Horário no Lineup',
+        xaxis_title='Ano do festival',
+        xaxis_color='grey',
+        yaxis_color='grey'
+    )
+    return fig
+    #lineups_dsc.head()
+
+
+## Time since latest release
+def last_release_time_distribution_bar(lineups_df, lolla_palette):
+    # Tempo desde o último lançamento 
+    df = lineups_df.loc[lineups_df['has_discography']].copy()
+
+    df.loc[:, 'disc'] = df['time_since_latest_release'].apply(lambda x: "{:.0f}".format(x) if x < 5 else '5+')
+
+    df = df.groupby(['disc'], as_index=False).agg({'artist':'count'})
+    df.loc[:, 'percent'] = 100*df['artist']/df['artist'].sum()
+    df.loc[:, 'rank'] = df['percent'].rank(ascending=False)
+    df.loc[:, 'text'] = df.apply(lambda x: "<b>{:.1f}%</b>".format(x['percent']) if x['rank'] == 1 else "{:.1f}%".format(x['percent']), axis=1)
+
+    df
+    fig = px.bar(df, x='disc', y='percent', text='text',
+                    color_discrete_sequence=lolla_palette[1:]
+                )
+
+    fig.update_traces(textposition='outside')
+    fig.update_yaxes(range=[0,66], tickvals=[0, 65], ticksuffix='%', color='grey', title='Porcentagem do Lineup')
+    fig.update_xaxes(type='category', title='Tempo desde o último lançamento', color='grey')
+    fig = format_fig(fig)
+    fig.update_layout(
+        title='Quanto tempo demora para o artista<br>tocar depois do último lançamento?',
+        margin_t=120,
+        xaxis_title='Anos'
+    )
+    
+    return fig
+

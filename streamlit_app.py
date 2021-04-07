@@ -8,88 +8,49 @@ import pandas as pd
 from pathlib import Path
 from PIL import Image
 import string
+import SessionState
 
 from sources.data_load_functions import *
 from sources.visualization_functions import *
 from sources.general_functions import *
+from part1 import part1
+from part2 import part2
 
-image_counter = -1
+# Page params
+query_params = st.experimental_get_query_params()
+app_state = st.experimental_get_query_params()
 
-# Data definitions
-data_path = Path('./data/prep')
-
-
-# Load data
-data_dict = load_data(data_path)
-lineups_df = data_dict['lineups_df']
-genre_per_act_df = data_dict['genre_per_act_df']
-umap_df = data_dict['umap_df']
-
-
-# Color definitions
-main_palette = px.colors.qualitative.Safe
-lolla_palette = ['#279D91', '#E8483E']
-
-palette = px.colors.sequential.deep
-palette_name= 'deep'
-years = sorted(lineups_df['year'].unique().tolist())
-match_color_year = {str(years[i]):palette[i] for i in range(0, len(years))}
-
-tone = 200
-grey = f"rgb({tone},{tone},{tone})"
-red = px.colors.qualitative.Safe[1]
-green = px.colors.qualitative.Bold[1]
-color_dict = {'red':red, 'grey':grey, 'green':green}
-
-
-# Data definitons
-
-genre_words = list(lineups_df.iloc[0]['lastfm_genre_tags'].keys())
-
-tag_dict_map = {genre_words[i]:main_palette[i] for i in range(0, len(genre_words))}
-category_orders = {'genre':
-                   ['rock', 'electro', 'indie', 'alt', 'hop', 'rap', 'house', 'pop'],
-                   'lineup_moment':lineups_df.sort_values(by='order_in_lineup')['lineup_moment'].unique().tolist()
-                  }
-
-order_hour_dict = get_order_hour_dict(lineups_df)
-
-col_labels = {
-    'show_hour':'<i>Horário do show</i>',
-    'year':'<i>Ano</i>',
-    'palco':'<i>Palco</i>',
-    'career_time':'<i>Anos de carreira</i>',
-    'female_presence_str':'<i>Vocais femininos?</i>',
-    'is_br_str':'<i>Artista nacional?</i>',
-    'main_genres':'<i>Gênero musical</i>'
+session = SessionState.get(
+    view=1, first_query_params=st.experimental_get_query_params()
+)
+first_query_params = session.first_query_params
+default_values = {
+    "view": int(session.first_query_params.get("parte", [0])[0]),
 }
 
+session.view = default_values['view']
+
+
 # Layout definitions
-cols_baseline=12
-image = Image.open(data_path/'image.jpg')
+cols_baseline=10
 
+# Layout
+parts = {1: 'Passado e Futuro (Parte 1)', 2:'A Cena Nacional (Parte 2)', 3:'Mulheres na Música (Parte 3)'}
 
-###### Title headline, subtitle
-center = pad_cols([cols_baseline])[0]
-center.image(image)
+if session.view == 1:
+    part1(cols_baseline)
 
-text = """
-# Lollapalooza: Passado e Futuro
-## O que podemos aprender com 9 anos de dados do maior festival de música alternativa do país?
-Um ensaio visual por <b>Adauto Braz</b>
-"""
-center.markdown(text, unsafe_allow_html=True)
-space_out(2)
+if session.view == 2:
+    part2(cols_baseline)
 
-fig = genre_year_trend(genre_per_act_df, tag_dict_map, category_orders)
-image_counter, image_name = plot(center, fig, image_counter)
+other_parts = {k: v for k,v in parts.items() if k != session.view}
+# for k, v in other_parts.items():
+    
+#     # text = """
+#     #     <a href="https://share.streamlit.io/adautobraz/lollapalooza/?parte={}">{}</a>
+#     # """.format(k, v)
 
-fig = lineups_visualizer(lineups_df, col_labels)
-image_counter, image_name = plot(center, fig, image_counter)
-
-# Genre view
-fig = acts_similarity_scatter(lineups_df, umap_df, match_color_year, col_labels)
-image_counter, image_name = plot(center, fig, image_counter)
-
-fig = genre_year_position_trend(genre_per_act_df, 4, category_orders, order_hour_dict)
-image_counter, image_name = plot(center, fig, image_counter)
+#     text = """
+#         <a href="http://localhost:8501/?parte={}">{}</a>
+#     """.format(k, v)     
+#     st.markdown(text, unsafe_allow_html=True)

@@ -1,7 +1,9 @@
 import pandas as pd
 import streamlit as st
+import plotly.express as px
 
 from .general_functions import vectorize_column, get_order_hour_dict, discretize_lineup_position
+
 
 @st.cache
 def load_data(data_path):
@@ -46,3 +48,63 @@ def load_data(data_path):
     data_dict['umap_df'] = umap_df
 
     return data_dict
+
+
+def load_color_references(lineups_df):
+
+    # Color definitions
+    main_palette = px.colors.qualitative.Safe
+    lolla_palette = ['#279D91', '#E8483E']
+
+    palette = px.colors.sequential.deep
+    palette_name= 'deep'
+    years = sorted(lineups_df['year'].unique().tolist())
+    match_color_year = {str(years[i]):palette[i] for i in range(0, len(years))}
+
+    tone = 200
+    grey = f"rgb({tone},{tone},{tone})"
+    red = px.colors.qualitative.Safe[1]
+    green = px.colors.qualitative.Bold[1]
+    color_dict = {'red':red, 'grey':grey, 'green':green}
+    match_color_year['2020'] = f"rgba({tone},{tone},{tone}, 1)"
+
+    genre_words = sorted(list(lineups_df.iloc[0]['lastfm_genre_tags'].keys()))
+    tag_dict_map = {genre_words[i]:main_palette[i] for i in range(0, len(genre_words))}
+   
+    color_references = {
+        'main_palette':main_palette,
+        'lolla_palette':lolla_palette,
+        'match_color_year':match_color_year,
+        'tag_dict_map':tag_dict_map,
+        'color_dict': color_dict,
+        'palette_name': palette_name
+    }
+
+    return color_references
+
+
+def load_data_references(lineups_df):
+    # Data definitons
+
+    category_orders = {
+        'genre':['rock', 'electro', 'indie', 'alt', 'hop', 'rap', 'house', 'pop'],
+        'lineup_moment':lineups_df.sort_values(by='order_in_lineup')['lineup_moment'].unique().tolist()
+    }
+
+    col_labels = {
+        'show_hour':'<i>Horário do show</i>',
+        'year':'<i>Ano</i>',
+        'palco':'<i>Palco</i>',
+        'career_time':'<i>Anos de carreira</i>',
+        'female_presence_str':'<i>Vocais femininos?</i>',
+        'is_br_str':'<i>Artista nacional?</i>',
+        'main_genres':'<i>Gênero musical</i>'
+    }
+
+
+    data_references = {
+        'category_orders':category_orders,
+        'col_labels':col_labels
+    }
+
+    return data_references

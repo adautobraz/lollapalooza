@@ -15,20 +15,23 @@ def pad_cols(col_list):
     all_cols = st.beta_columns(new_list)
     return all_cols[1:-1]
 
+def get_image_name(image_counter):
+    image_name = string.ascii_uppercase[image_counter + 1]
+    image_ref = f"<b>{image_name}</b>"
+    return image_ref
+
 
 ## Plotly Layout 
 def plot(streamlit_el, fig, image_counter):
     general_config ={'displayModeBar':False}
-
+    image_ref = get_image_name(image_counter)
     image_counter += 1
-    image_name = string.ascii_uppercase[image_counter]
-    image_ref = f"<b>{image_name}</b>"
     old_title = fig.layout.title.text
     new_title = f"{image_ref} - {old_title}"
     fig.update_layout(title=new_title)
     streamlit_el.plotly_chart(fig, use_container_width=True, config=general_config)
     
-    return image_counter, image_ref
+    return image_counter
 
 
 def format_fig(fig):
@@ -38,7 +41,8 @@ def format_fig(fig):
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         margin_r=0,
-        margin_l=0
+        margin_l=0,
+        margin_b=80
     )
     fig.update_xaxes(fixedrange = True)
     fig.update_yaxes(fixedrange = True)
