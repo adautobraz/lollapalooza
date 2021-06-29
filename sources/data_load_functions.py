@@ -1,10 +1,50 @@
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+from sklearn.preprocessing import StandardScaler
+from scipy.spatial.distance import cdist
 
 from .general_functions import vectorize_column, get_order_hour_dict, discretize_lineup_position
 
+@st.cache
+def get_distances_df(lineups_df):
 
+    # df = lineups_df\
+    #         .loc[:, ['female_presence', 'is_br', 'career_time', 'year']]
+
+    df = lineups_df\
+            .loc[:, ['year']]
+
+    df_genres = lineups_df['lastfm_genre_tags'].apply(pd.Series)
+
+    df_simil = pd.concat([df_genres, df], axis=1).dropna()
+
+    all_dists = []
+
+    scaler = StandardScaler()
+
+    # for y in df['year'].unique().tolist():
+    df_scal = pd.DataFrame(scaler.fit_transform(df_simil.drop(columns=['year'])))
+
+    df_coords = df_scal.copy()
+    df_coords.index = df_simil.index
+    df_coords.loc[:, 'year'] = df_simil['year']
+
+    year_mean = df_coords.groupby(['year']).mean()
+
+    df_dist = pd.DataFrame(cdist(df_scal.values, year_mean.values))
+    df_dist.columns = year_mean.index.tolist()
+    df_dist.index = df_simil.index
+
+    dist_df = df_dist.unstack().to_frame().reset_index()
+    dist_df.columns=['year_ref', 'artist_id', 'distance']
+
+    df_info = lineups_df.loc[:, ['artist', 'career_time', 'palco', 'year']].reset_index()
+    dist_df = pd.merge(left=dist_df, right=df_info, on='artist_id')
+
+    return dist_df
+
+    
 @st.cache
 def load_data(data_path):
 
@@ -46,6 +86,10 @@ def load_data(data_path):
     # UMAP df
     umap_df = pd.read_csv(data_path/'umap_projection.csv').set_index('artist_id')
     data_dict['umap_df'] = umap_df
+
+    # Distance df
+    dist_df = get_distances_df(lineups_df)
+    data_dict['dist_df'] = dist_df
 
     return data_dict
 

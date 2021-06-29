@@ -63,6 +63,15 @@ def genre_year_position_trend(genre_per_act_df, smooth, category_orders, order_h
     palette = px.colors.sequential.Agsunset_r
     colors = [palette[i] for i in range(0, len(palette)) if i% 2 == 0]
 
+    # Check r2
+    fig = px.scatter(df, facet_col='genre',  y='genre_importance', x='year',
+                    color='color', trendline='ols')
+    df_trend = px.get_trendline_results(fig)
+    df_trend.loc[:, 'r2'] = df_trend['px_fit_results'].apply(lambda x: x.rsquared)
+    df_trend = df_trend[df_trend['r2'] >= 0.2]
+
+    df = pd.merge(left=df, right=df_trend, on=['color', 'genre'], how='inner')
+
     fig = px.scatter(df, facet_col='genre', y='genre_importance', x='year',
                     color='color', trendline='ols', height=800, size='size', size_max=2,
             category_orders=category_orders,
@@ -855,7 +864,7 @@ def career_time_per_position_heatmap(lineups_df, category_orders, palette_name):
     fig = format_fig(fig)
     fig.update_yaxes(autorange='reversed')
     fig.update_layout(
-        title='Quanto tempo demora<br>para ser headliner?',
+        title='Mais tempo de carreira = Headliner?',
         margin_t=120,
         coloraxis_colorbar_title='Anos de<br>carreira',
         yaxis_title='Horário no Lineup',
@@ -894,5 +903,43 @@ def last_release_time_distribution_bar(lineups_df, lolla_palette):
         xaxis_title='Anos'
     )
     
+    return fig
+
+
+def genre_diversity_over_time(dist_df, lolla_palette, color_dict):
+        # Diversidade ao longo do tempo
+    df = dist_df.copy()
+    df.loc[:, 'squared'] = df['distance']**2
+    
+    df = df\
+            .groupby(['year'], as_index=False)\
+            .agg({'squared':'mean', 'distance':'mean'})
+
+    df.loc[:, 'sqrt'] = np.sqrt(df['squared'])
+
+    df.loc[:, 'value'] = df['squared']
+
+    df.loc[:, 'min'] = df['value'].min()
+    df.loc[:, 'max'] = df['value'].max()
+
+    grey = color_dict['grey']
+    
+    df.loc[:, 'x_axis'] = df.apply(lambda x: "<b>{:.0f}</b>".format(x['year']) if x['value'] in [x['min'], x['max']] else "{:.0f}".format(x['year']), axis=1)
+
+
+    fig = px.line(df, x='year', y=['value'], color_discrete_sequence=lolla_palette)
+    fig = format_fig(fig)
+    fig.update_yaxes(range=[-1, 11], tickvals=[0,10], 
+                    ticktext=['Coesão total<br>(Artistas<br>totalmente iguais)', 'Mais<br>diversidade'], title='')
+
+    fig.update_xaxes(tickvals=df['year'], ticktext=df['x_axis'], title='Ano', showgrid=False, tickangle=45)
+    fig.add_vline(x=2013, line_color=grey, line_dash='dash', line_width=1)
+    fig.add_vline(x=2018, line_color=grey, line_dash='dash', line_width=1)
+    fig.update_traces(mode='lines+markers')
+    fig.update_layout(
+        title='Diversidade musical do<br>Lollapalooza, ano a ano',
+        margin_t=120,
+        showlegend=False)
+
     return fig
 
