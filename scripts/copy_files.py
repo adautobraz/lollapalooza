@@ -38,6 +38,11 @@ copy_tree(str(analysis_path/folder), str(current_path/folder))
 folder = 'sources/'
 Path(current_path/folder).mkdir(exist_ok=True, parents=True)
 copy_tree(str(analysis_path/folder), str(current_path/folder))
+
+
+folder = 'files/'
+Path(current_path/folder).mkdir(exist_ok=True, parents=True)
+copy_tree(str(analysis_path/folder), str(current_path/folder))
 # -
 
 # ! pipreqs --force ./ > requirements.txt
